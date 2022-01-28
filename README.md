@@ -1,11 +1,3 @@
-# TODO
-- [ ] mailu for sending mails to users from authelia for setting up TOTP
-- [ ] more documentation of secret files (read bin/configre.sh to see the current list)
-- [ ] plex etc.
-- [ ] NextCloud for groupware
-- [ ] Mopidy for music streaming
-- [ ] getmoxi for video streaming
-- [ ] karaoke-forever, preferrably the [gazugafan](https://github.com/gazugafan)'s (fork)(https://github.com/gazugafan/karaoke-forever)
 # Configuring
 Running the bin/configure.sh script will make a backup of any existing .env file and create a new one based on the .env-template and information from the current enviornment, user updated files and user input.
 
