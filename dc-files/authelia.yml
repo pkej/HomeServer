@@ -1,0 +1,73 @@
+version: "3.9"
+
+secrets:
+  authelia_jwt_secret:
+    file: $SECRETSDIR/authelia_jwt_secret
+  authelia_session_secret:
+    file: $SECRETSDIR/authelia_session_secret
+  authelia_storage_mysql_password:
+    file: $SECRETSDIR/authelia_storage_mysql_password
+  authelia_notifier_smtp_password:
+    file: $SECRETSDIR/authelia_notifier_smtp_password
+  authelia_duo_api_secret_key:
+    file: $SECRETSDIR/authelia_duo_api_secret_key
+  authelia_salt_secret:
+    file: $SECRETSDIR/authelia_salt_secret
+
+networks:
+  t2_proxy:
+    name: t2_proxy
+  mariadb:
+    name: mariadb
+  openldap:
+    name: openldap
+
+services:
+  authelia:
+    container_name: authelia
+    # Check this before upgrading: https://github.com/authelia/authelia/blob/master/BREAKING.md
+    image: authelia/authelia:latest
+    restart: unless-stopped
+    networks:
+      t2_proxy:
+        ipv4_address: 192.168.90.251 # You can specify a static IP
+      mariadb:
+      openldap:
+    links:
+      - openldap
+    # ports:
+    #   - "9091:9091"
+    volumes:
+      - $CONFIGDIR/authelia:/config
+      #- $SHAREDDIR:/shared
+    environment:
+      - TZ=$TZ
+      - AUTHELIA_JWT_SECRET_FILE=/run/secrets/authelia_jwt_secret
+      - AUTHELIA_SESSION_SECRET_FILE=/run/secrets/authelia_session_secret
+      #- AUTHELIA_STORAGE_MYSQL_PASSWORD_FILE=/run/secrets/authelia_storage_mysql_password
+      #- AUTHELIA_NOTIFIER_SMTP_PASSWORD_FILE=/run/secrets/authelia_notifier_smtp_password
+      #- AUTHELIA_DUO_API_SECRET_KEY_FILE=/run/secrets/authelia_duo_api_secret_key
+      #- AUTHELIA_SALT_SECRET_FILE=/run/secrets/authelia_salt_secret
+      - PUID=$PUID
+      - PGID=$PGID
+    secrets:
+      - authelia_jwt_secret
+      - authelia_session_secret
+      #- authelia_storage_mysql_password
+      #- authelia_notifier_smtp_password
+      #- authelia_duo_api_secret_key
+      #- authelia_salt_secret
+    expose:
+      - 9091
+    labels:
+      - "traefik.enable=true"
+      ## HTTP Routers
+      - "traefik.http.routers.authelia-rtr.entrypoints=https"
+      - "traefik.http.routers.authelia-rtr.rule=Host(`authelia.$DOMAINNAME0`)"
+      - "traefik.http.routers.authelia-rtr.tls=true"
+      ## Middlewares
+      - "traefik.http.routers.authelia-rtr.middlewares=chain-authelia@file"
+      ## HTTP Services
+      - "traefik.http.routers.authelia-rtr.service=authelia-svc"
+      - "traefik.http.services.authelia-svc.loadbalancer.server.port=9091"
+

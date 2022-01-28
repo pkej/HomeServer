@@ -1,0 +1,30 @@
+version: "3.9"
+
+networks:
+    t2_proxy:
+      external: true
+    default:
+      driver: bridge
+
+services:
+  whoami:
+    container_name: whoami
+    image: containous/whoami:latest
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - TZ=$TZ
+    ports:
+      - 81:80
+    networks:
+      - t2_proxy
+    labels:
+      - "traefik.enable=true"
+      ## HTTP Routers
+      - "traefik.http.routers.whoami-rtr.entrypoints=https"
+      - "traefik.http.routers.whoami-rtr.rule=Host(`whoami.$DOMAINNAME0`)"
+      ## Middlewares
+      - "traefik.http.routers.whoami-rtr.middlewares=chain-no-auth@file"
+      ## HTTP Services
+      - "traefik.http.routers.whoami-rtr.service=whoami-svc"
+      - "traefik.http.services.whoami-svc.loadbalancer.server.port=81"

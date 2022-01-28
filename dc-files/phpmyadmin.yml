@@ -1,0 +1,52 @@
+version: "3.7"
+secrets:
+  mariadb_root_password:
+    file: $SECRETSDIR/mariadb_root_password
+
+networks:
+  t2_proxy:
+      name: t2_proxy
+  mariadb:
+      name: mariadb
+      
+services:
+  phpmyadmin:
+    container_name: phpmyadmin
+    image: phpmyadmin:latest
+    restart: unless-stopped
+    depends_on:
+      - mariadb
+      - authelia
+    links:
+      - mariadb
+    networks:
+      - mariadb
+      - t2_proxy
+    volumes:
+      - $CONFIGDIR/phpmyadmin:/config
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    security_opt:
+      - no-new-privileges:true
+    restart: always
+    secrets:
+      - mariadb_root_password
+    environment:
+      - PMA_ARBITRARY=1
+      - PMA_USER=root
+      - PMA_PASSWORD_FILE=/run/secrets/mariadb_root_password
+      - PMA_HOST=mariadb
+      - TZ=$TZ
+      - PUID=$PUID
+      - PGID=$PGID
+    labels:
+      - "traefik.enable=true"
+      ## HTTP Routers
+      - "traefik.http.routers.phpmyadmin-rtr.entrypoints=https"
+      - "traefik.http.routers.phpmyadmin-rtr.rule=Host(`phpmyadmin.$DOMAINNAME0`,`pma.$DOMAINNAME0`)"
+      ## Middlewares
+      - "traefik.http.routers.phpmyadmin-rtr.middlewares=chain-authelia@file"
+      ## HTTP Services
+      - "traefik.http.routers.phpmyadmin-rtr.service=phpmyadmin-svc"
+      - "traefik.http.services.phpmyadmin-svc.loadbalancer.server.port=80"
+

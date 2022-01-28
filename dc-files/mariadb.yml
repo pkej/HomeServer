@@ -1,0 +1,39 @@
+version: "3.9"
+secrets:
+  mariadb_root_password:
+    file: $SECRETSDIR/mariadb_root_password
+
+networks:
+  mariadb:
+    name: mariadb
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.89.0/24
+
+services:
+  mariadb:
+    container_name: mariadb
+    image: mariadb:latest
+    restart: unless-stopped
+    networks:
+      - mariadb
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "3306:3306"
+    secrets:
+      - mariadb_root_password
+    volumes:
+      - $CONFIGDIR/mariadb:/config
+      - $DATADIR/mariadb/mariadb:/var/lib/mariadb
+      - $DATADIR/mariadb/mysql:/var/lib/mysql
+      #- $CONFIGDIR/mariadb/etc:/etc
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - PUID=$PUID
+      - PGID=$PGID
+      - MARIADB_ROOT_PASSWORD_FILE=/run/secrets/mariadb_root_password
+      - TZ=$TZ
+

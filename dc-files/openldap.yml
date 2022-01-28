@@ -1,0 +1,73 @@
+version: "3.9"
+secrets:
+  mariadb_root_password:
+    file: $SECRETSDIR/mariadb_root_password
+
+networks:
+  openldap:
+    name: openldap
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.88.0/24
+  t2_proxy:
+    external: yes
+
+services:
+  openldap:
+    image: bitnami/openldap:latest
+    container_name: openldap
+    volumes:
+      #- $CONFIGDIR/openldap/var:/var/lib/ldap
+      #- $CONFIGDIR/openldap/etc:/etc/ldap/slapd.d
+      #- $CONFIGDIR/openldap/etc:/var/lib/ldap.secAuthority
+      - $CONFIGDIR/openldap:/bitnami/openldap
+      - $CERTSDIR:/opt/bitnami/openldap/certs
+    environment:
+      - TZ=$TZ
+      - PUID=$PUID
+      - PGID=$PGID
+      - LDAP_TLS_CERT_FILE=/opt/bitnami/openldap/certs/$DOMAINNAME0/cert.pem
+      - LDAP_TLS_KEY_FILE=/opt/bitnami/openldap/certs/$DOMAINNAME0/key.pem
+      - LDAP_TLS_CA_FILE=/opt/bitnami/openldap/certs/$DOMAINNAME0/combined.pem
+
+      - LDAP_DOMAIN=$DOMAINNAME0
+      - LDAP_ROOT=dc=$DOMAINROOT0,dc=$DOMAINTLD0
+
+      - LDAP_USERS=$LDAP_USERS
+      - LDAP_PASSWORDS=$LDAP_PASSWORDS
+
+      - LDAP_ADMIN_USERNAME=$LDAP_ADMIN_USERNAME
+      - LDAP_ADMIN_PASSWORD=$LDAP_ADMIN_PASSWORD
+
+      #- LDAP_CONFIG_ADMIN_USERNAME=$LDAP_CONFIG_ADMIN_USERNAME
+      #- LDAP_CONFIG_ADMIN_ENABLED=yes
+      #- LDAP_CONFIG_PASSWORD=$LDAP_CONFIG_ADMIN_PASSWORD
+
+      - LDAP_PORT_NUMBER=1389
+      - LDAP_LDAPS_PORT_NUMBER=1636
+      - LDAP_ENABLE_TLS=yes
+      - LDAP_TLS_VERIFY_CLIENT=never
+      #- ALLOW_EMPTY_PASSWORD=yes
+    ports:
+      - 389:1389
+      - 636:1636
+    # For replication to work correctly, domainname and hostname must be
+    # set correctly so that "hostname"."domainname" equates to the
+    # fully-qualified domain name for the host.
+    domainname: $DOMAINNAME0
+    hostname: openldap
+    networks:
+      openldap:
+        ipv4_address: 192.168.88.4
+      t2_proxy:
+    labels:
+      - "traefik.enable=true"
+      ## HTTP Routers
+      - "traefik.http.routers.openldap-rtr.entrypoints=https"
+      - "traefik.http.routers.openldap-rtr.rule=Host(`ldap.$DOMAINNAME0`,`openldap.$DOMAINNAME0`)"
+      ## Middlewares
+      - "traefik.http.routers.openldap-rtr.middlewares=chain-no-auth@file"
+      ## HTTP Services
+      - "traefik.http.routers.openldap-rtr.service=openldap-svc"
+      - "traefik.http.services.openldap-svc.loadbalancer.server.port=389"

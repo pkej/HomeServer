@@ -1,0 +1,34 @@
+version: "3.9"
+networks:
+  t2_proxy:
+    external: true
+  default:
+    driver: bridge
+  socket_proxy:
+    external: true
+secrets:
+  cf_api_key0:
+    file: $SECRETSDIR/cf_api_key0
+  cf_api_token0:
+    file: $SECRETSDIR/cf_api_token0
+  cf_ddns_api_token_id0:
+    file: $SECRETSDIR/cf_ddns_api_token_id0
+  cf_zone_id0:
+    file: $SECRETSDIR/cf_zone_id0
+
+services:
+  cf-ddns:
+    container_name: cf-ddns
+    image: oznu/cloudflare-ddns:latest
+    restart: always
+    secrets:
+      - cf_api_token0
+    environment:
+      - API_KEY_FILE=/run/secrets/cf_api_token0
+      - ZONE=$DOMAINNAME0
+      #- SUBDOMAIN=subdomain
+      - PROXIED=false
+      - CRON="@daily"
+      - TZ=$TZ
+      - PUID=$PUID
+      - PGID=$PGID

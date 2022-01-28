@@ -1,0 +1,53 @@
+version: "3.9"
+networks:
+  t2_proxy:
+    external: true
+  default:
+    driver: bridge
+  socket_proxy:
+    external: true
+secrets:
+  cf_api_key0:
+    file: $SECRETSDIR/cf_api_key0
+  cf_api_token0:
+    file: $SECRETSDIR/cf_api_token0
+  cf_ddns_api_token_id0:
+    file: $SECRETSDIR/cf_ddns_api_token_id0
+  cf_zone_id0:
+    file: $SECRETSDIR/cf_zone_id0
+
+services:  
+  cf-companion:
+    container_name: cf-companion
+    image: tiredofit/traefik-cloudflare-companion:6.8.1
+    depends_on:
+      - cf-ddns
+      - socket-proxy
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    # profiles:
+    # - core
+    networks:
+      - socket_proxy
+      - t2_proxy
+    environment:
+      - TIMEZONE=$TZ
+      - TRAEFIK_VERSION=2
+      #- CF_EMAIL=$CLOUDFLARE_EMAIL
+      - CF_TOKEN=$CF_API_TOKEN0
+      - TARGET_DOMAIN=$DOMAINNAME0
+      - DOMAIN1=$DOMAINNAME0
+      - DOMAIN1_ZONE_ID=$CF_ZONE_ID0
+      - DOMAIN1_PROXIED=TRUE
+      - DOCKER_HOST=tcp://socket-proxy:2375
+      - TZ=$TZ
+      - PUID=$PUID
+      - PGID=$PGID
+   # secrets:
+      #- cf_api_token0
+      #- cf_zone_id0
+    #labels:
+      # Add hosts specified in rules here to force cf-companion to create the CNAMEs
+      # Since cf-companion creates CNAMEs based on host rules, this a workaround for non-docker/external apps
+      #- "traefik.http.routers.cf-companion-rtr.rule=Host(Host(`webmin.$DOMAINNAME0`) || Host(`shell.$DOMAINNAME0`)"

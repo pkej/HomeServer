@@ -1,0 +1,50 @@
+version: "3.9"
+networks:
+  t2_proxy:
+    external: true
+  default:
+    driver: bridge
+  socket_proxy:
+    external: true
+secrets:
+  cf_api_key0:
+    file: $SECRETSDIR/cf_api_key0
+  cf_api_token0:
+    file: $SECRETSDIR/cf_api_token0
+  cf_zone_id0:
+    file: $SECRETSDIR/cf_zone_id0
+  pkcs12_password:
+    file: $SECRETSDIR/pkcs12_password
+
+services:
+  certdumper:
+    container_name: traefik_certdumper
+    image: humenius/traefik-certs-dumper:1.5.0
+    network_mode: none
+    # profiles:
+    # - core
+    depends_on:
+      - traefik
+      - socket-proxy
+    security_opt:
+      - no-new-privileges:true
+    # command: --restart-containers container1,container2,container3
+    volumes:
+      - $CONFIGDIR/traefik2/acme:/traefik:ro
+      - $CERTSDIR:/output:rw
+      # - /var/run/docker.sock:/var/run/docker.sock:ro # Only needed if restarting containers (use Docker Socket Proxy instead)
+    secrets:
+      - pkcs12_password
+    environment:
+      - DOCKER_HOST=tcp://socket-proxy:2375
+      - DOMAIN=$DOMAINNAME0,ldap.$DOMAINNAME0
+      - TZ=$TZ
+      - COMBINED_PEM=combined.pem
+      - COMBINE_PKCS12=yes
+      - PKCS12_PASSWORD_FILE=/run/secrets/pkcs12_password
+    healthcheck:
+      test: ["CMD", "/usr/bin/healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+

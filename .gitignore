@@ -1,0 +1,13 @@
+.env
+.env--
+secrets/**
+*.log
+**/logs
+appdata/**
+.DS_Store
+acme.json
+users_database.yml
+*.sqlite3
+*.mdb
+*.ldif
+notification.txt

@@ -1,0 +1,163 @@
+###############################################################
+#                   Authelia configuration                    #
+###############################################################
+theme: dark
+server:
+  host: 0.0.0.0
+  port: 9091
+  path: ""
+
+##
+## Log Configuration
+##
+log:
+  ## Level of verbosity for logs: info, debug, trace.
+  level: trace
+
+  ## Format the logs are written as: json, text.
+  # format: json
+
+  ## File path where the logs will be written. If not set logs are written to stdout.
+  file_path: /config/authelia.log
+
+  ## Whether to also log to stdout when a log_file_path is defined.
+  #keep_stdout: false
+
+# This secret can also be set using the env variables AUTHELIA_JWT_SECRET_FILE
+# jwt_secret: SECRET_GOES_HERE # use docker secret file instead AUTHELIA_JWT_SECRET_FILE
+
+# https://docs.authelia.com/configuration/miscellaneous.html#default-redirection-url
+default_redirection_url: https://authelia.kulturarkitektene.no
+
+
+##
+## TOTP Configuration
+##
+## Parameters used for TOTP generation.
+totp:
+  ## The issuer name displayed in the Authenticator application of your choice.
+  issuer: authelia.com
+
+  ## The TOTP algorithm to use.
+  ## It is CRITICAL you read the documentation before changing this option:
+  ## https://www.authelia.com/docs/configuration/one-time-password.html#algorithm
+  algorithm: sha1
+
+  ## The number of digits a user has to input. Must either be 6 or 8.
+  ## Changing this option only affects newly generated TOTP configurations.
+  ## It is CRITICAL you read the documentation before changing this option:
+  ## https://www.authelia.com/docs/configuration/one-time-password.html#digits
+  digits: 6
+
+  ## The period in seconds a one-time password is valid for.
+  ## Changing this option only affects newly generated TOTP configurations.
+  period: 30
+
+  ## The skew controls number of one-time passwords either side of the current one that are valid.
+  ## Warning: before changing skew read the docs link below.
+  skew: 1
+  ## See: https://www.authelia.com/docs/configuration/one-time-password.html#input-validation to read the documentation.
+
+##
+## NTP Configuration
+##
+## This is used to validate the servers time is accurate enough to validate TOTP.
+ntp:
+  ## NTP server address.
+  address: "time.cloudflare.com:123"
+
+  ## NTP version.
+  version: 4
+
+  ## Maximum allowed time offset between the host and the NTP server.
+  max_desync: 3s
+
+  ## Disables the NTP check on startup entirely. This means Authelia will not contact a remote service at all if you
+  ## set this to true, and can operate in a truly offline mode.
+  disable_startup_check: false
+
+  ## The default of false will prevent startup only if we can contact the NTP server and the time is out of sync with
+  ## the NTP server more than the configured max_desync. If you set this to true, an error will be logged but startup
+  ## will continue regardless of results.
+  disable_failure: false
+
+
+
+authentication_backend:
+#  file:
+#    path: /config/users_database.yml
+#    password:
+#      algorithm: argon2id
+#      iterations: 1
+#      key_length: 32
+#      salt_length: 16
+#      parallelism: 8
+#      memory: 1024 # blocks this much of the RAM. Tune this.
+  ldap:
+    implementation: custom
+    url: ldap://192.168.88.4:1389
+    timeout: 5s
+    start_tls: false
+    tls:
+      server_name: ldap.kulturarkitektene.no
+      skip_verify: false
+      minimum_version: TLS1.2
+    base_dn: dc=kulturarkitektene,dc=no
+    username_attribute: uid
+    additional_users_dn: ou=users
+    users_filter: (&({username_attribute}={input})(objectClass=inetOrgPerson))
+    additional_groups_dn: ou=users
+    groups_filter: (&(member={dn})(objectClass=organizationalUnit))
+    group_name_attribute: cn
+    mail_attribute: mail
+    display_name_attribute: displayName
+    user: cn=ldapadmin,dc=kulturarkitektene,dc=no
+    password: passw0rd
+
+
+
+access_control:
+  default_policy: deny
+  rules:
+    - domain: authelia.kulturarkitektene.no
+      policy: bypass
+    - domain:
+        - "*.kulturarkitektene.no"
+        - "kulturarkitektene.no"
+      policy: two_factor
+    - domain:
+        - "*.kulturarkitektene.no"
+        - "kulturarkitektene.no"
+      policy: bypass
+      networks:
+        - 192.168.1.0/24
+        - 192.168.10.0/24
+        - 192.168.88.0/24
+        - 192.168.89.0/24
+        - 192.168.90.0/24
+        - 192.168.91.0/24
+
+session:
+  name: authelia_session
+  # This secret can also be set using the env variables AUTHELIA_SESSION_SECRET_FILE
+  # secret: SECRET_GOES_HERE # use docker secret file instead AUTHELIA_SESSION_SECRET_FILE
+  expiration: 3600 # 1 hour
+  inactivity: 300 # 5 minutes
+  domain: kulturarkitektene.no # Should match whatever your root protected domain is
+
+regulation:
+  max_retries: 3
+  find_time: 120
+  ban_time: 300
+
+storage:
+  local:
+    path: /config/db.sqlite3
+  encryption_key: you_must_generate_a_random_string_of_more_than_twenty_chars_and_configure_this #added Dec 5 2021
+
+
+notifier:
+  # For testing purposes, notifications can be sent in a file. Be sure to map the volume in docker-compose.
+  filesystem:
+    filename: /config/notification.txt
+
